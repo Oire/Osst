@@ -1,20 +1,27 @@
 {
     "name": "oire/osst",
-    "description": "Oire Simple Split Tokens, a ParagonIE Split Token solution implementation",
+    "description": "Osst, a split tokens implementation.",
     "type": "library",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/Oire/php-code-style"
+        }
+    ],
     "require": {
-        "php": ">=7.1",
-        "paragonie/easydb": "^2",
-        "oire/base64": "^1"
+        "php": ">=7.3",
+        "oire/base64": "^2",
+        "oire/colloportus": "^2"
     },
     "require-dev": {
+        "friendsofphp/php-cs-fixer": "^2.16",
         "phpunit/phpunit": "^9",
-        "squizlabs/php_codesniffer": "^3"
+        "oire/php-code-style": "dev-master"
     },
     "license": "MIT",
     "authors": [
         {
-            "name": "Andre Polykanine",
+            "name": "Andre Polykanine also known as Menelion Elensúlë",
             "email": "ap@oire.me",
             "homepage": "https://github.com/Menelion",
             "role": "developer"
@@ -26,15 +33,20 @@
     },
     "autoload": {
         "psr-4": {
-            "Oire\\": "src"
+            "Oire\\Osst\\": "src"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Oire\\Tests\\": "tests"
+            "Oire\\Osst\\Tests\\": "tests"
         }
     },
     "config": {
         "sort-packages": true
+    },
+    "scripts": {
+        "tests": "vendor/bin/phpunit",
+        "coding-style": "vendor/bin/php-cs-fixer fix --dry-run --diff --config=.php_cs.dist",
+        "clear": "rm -rf vendor/"
     }
 }

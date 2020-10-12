@@ -1,14 +1,17 @@
 <?php
 declare(strict_types=1);
-namespace Oire;
+namespace Oire\Osst;
 
 use DateTimeImmutable;
-use Oire\Base64;
-use Oire\Exception\Base64Exception;
-use Oire\Exception\OsstException;
-use Oire\Exception\OsstInvalidTokenException as TokenError;
+use Oire\Base64\Base64;
+use Oire\Base64\Exception\Base64Exception;
+use Oire\Colloportus\Colloportus;
+use Oire\Colloportus\Exception\ColloportusException;
+use Oire\Osst\Exception\OsstException;
+use Oire\Osst\Exception\OsstInvalidTokenException as TokenError;
 use PDO;
 use PDOException;
+use Throwable;
 
 /**
  * Oirë Simple Split Tokens (OSST)
@@ -39,13 +42,10 @@ final class Osst
     public const TOKEN_SIZE = 48;
     public const SELECTOR_SIZE = 16;
     public const VERIFIER_SIZE = 32;
-    public const HASH_FUNCTION = 'sha384';
+    public const TABLE_NAME = 'osst_tokens';
 
     private $dbConnection;
-    private $tableName;
-    private $camelCaseColumns;
     private $token;
-
     private $userId;
     private $expirationDate;
     private $tokenType;
@@ -54,11 +54,8 @@ final class Osst
     /**
      * Instantiate a new Osst object.
      * @param PDO $dbConnection Connection to your database
-     * @param ?string $token A user-provided token. If empty, a new token will be created
-     * @param ?string $tableName The name of the table where tokens are stored. If empty, will be set to `osst_tokens`
-     * @param bool $camelCaseColumns Whether the table and column names should be camelCase or snake_case. Preferably leave it at the default `false` value to comply with the SQL standard
-    */
-    public function __construct(PDO $dbConnection, ?string $token = null, ?string $tableName = null, bool $camelCaseColumns = false)
+     */
+    public function __construct(PDO $dbConnection)
     {
         $this->dbConnection = $dbConnection;
 
@@ -67,11 +64,17 @@ final class Osst
         } catch (PDOException $e) {
             throw TokenError::sqlError($e);
         }
+    }
 
-        $this->token = $token?: Base64::encode(random_bytes(self::TOKEN_SIZE));
+    /**
+     * Create a new token.
+     * @return $this
+     */
+    public function createToken(): self
+    {
+        $this->token = Base64::encode(random_bytes(self::TOKEN_SIZE));
 
-        $this->camelCaseColumns = $camelCaseColumns;
-        $this->tableName = $tableName?: ($this->camelCaseColumns? 'OsstTokens': 'osst_tokens');
+        return $this;
     }
 
     /**
@@ -81,15 +84,6 @@ final class Osst
     public function getDbConnection(): PDO
     {
         return $this->dbConnection;
-    }
-
-    /**
-     * Get the name of the table where the tokens are stored.
-     * @return string
-    */
-    public function getTableName(): string
-    {
-        return $this->tableName;
     }
 
     /**
@@ -103,12 +97,17 @@ final class Osst
     }
 
     /**
-     * Validate a user-provided token.
+     * Set and validate a user-provided token.
+     * @param string $token The token provided by the user
+     * @param ?string $additionalInfoDecryptionKey If not empty, the previously additional info for the token will be decrypted using Oirë Colloportus
+     * @see https://github.com/Oire/Colloportus
      * @throws TokenError
      * @return $this
-    */
-    public function validate(): self
+     */
+    public function setToken(string $token, ?string $additionalInfoDecryptionKey): self
     {
+        $this->token = $token;
+
         try {
             $rawToken = Base64::decode($this->token);
         } catch (Base64Exception $e) {
@@ -121,13 +120,12 @@ final class Osst
 
         $selector = Base64::encode(mb_substr($rawToken, 0, self::SELECTOR_SIZE, '8bit'));
 
-        $sql = $this->camelCaseColumns
-            ? sprintf('SELECT UserId, TokenType, Selector, Verifier, AdditionalInfo, ExpiresAt FROM %s WHERE Selector = ?', $this->tableName)
-            : sprintf('SELECT user_id, token_type, selector, verifier, additional_info, expires_at FROM %s WHERE selector = ?', $this->tableName);
+        $sql = sprintf('SELECT user_id, token_type, selector, verifier, additional_info, expires_at FROM %s WHERE selector = :selector', self::TABLE_NAME);
         $statement = $this->dbConnection->prepare($sql);
+        $statement->bindParam(':selector', $selector, PDO::PARAM_STR);
 
         try {
-            $statement->execute($storableSelector);
+            $statement->execute();
         } catch (PDOException $e) {
             throw TokenError::sqlError($e);
         }
@@ -138,17 +136,26 @@ final class Osst
             throw TokenError::selectorError();
         }
 
-        $verifier = Base64::encode(hash(self::HASH_FUNCTION, mb_substr($rawToken, self::SELECTOR_SIZE, self::VERIFIER_SIZE, '8bit'), true));
-        $validVerifier = $this->camelCaseColumns? $result['Verifier']: $result['verifier'];
+        $verifier = Base64::encode(hash(Colloportus::HASH_FUNCTION, mb_substr($rawToken, self::SELECTOR_SIZE, self::VERIFIER_SIZE, '8bit'), true));
+        $validVerifier = $result['verifier'];
 
         if (!hash_equals($verifier, $validVerifier)) {
             throw TokenError::verifierError();
         }
 
-        $this->userId = $this->camelCaseColumns? $result['UserId']: $result['user_id'];
-        $this->expirationDate = new DateTimeImmutable(sprintf('@%s', $this->camelCaseColumns? $result['ExpiresAt']: $result['expires_at']));
-        $this->tokenType = $this->camelCaseColumns? $result['tokenType']: $result['token_type'];
-        $this->additionalInfo = $this->camelCaseColumns? $result['AdditionalInfo']: $result['additional_info'];
+        $this->userId = $result['user_id'];
+        $this->expirationDate = new DateTimeImmutable(sprintf('@%s', $result['expires_at']));
+        $this->tokenType = $result['token_type'];
+
+        if (!empty($additionalInfoDecryptionKey)) {
+            try {
+                $this->additionalInfo = Colloportus::decrypt($result['additional_info'], $additionalInfoDecryptionKey);
+            } catch (ColloportusException $e) {
+                throw OsstException::decryptionError($e);
+            }
+        }
+
+        $this->additionalInfo = $result['additional_info'];
 
         return $this;
     }
@@ -203,7 +210,7 @@ final class Osst
     {
         try {
             return $this->expirationDate->format($format);
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             throw new OsstException(sprintf('Unable to format expiration date: %s.', $e->getMessage()), $e);
         }
     }
@@ -227,7 +234,7 @@ final class Osst
 
         try {
             $this->expirationDate = (new DateTimeImmutable())->modify($expires);
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             throw OsstException::invalidExpirationInterval($expires, $e->getMessage(), $e);
         }
 
@@ -273,33 +280,30 @@ final class Osst
 
     /**
      * Get the additional info for the token.
-     * @return mixed
+     * @return string
     */
-    public function getAdditionalInfo()
+    public function getAdditionalInfo(): string
     {
         return $this->additionalInfo;
     }
 
     /**
-     * Process the additional info for the token.
-     * @param callable $callback The function to apply to the additional info
-     * @param ?mixed[] $arguments More arguments to the callback function
-     * @return $this
-    */
-    public function processAdditionalInfo(callable $callback, ?array $arguments): self
-    {
-        $this->additionalInfo = ($arguments && count($arguments) > 0)? call_user_func($callback, $additionalInfo, ...$arguments): call_user_func($callback, $this->additionalInfo);
-
-        return $this;
-    }
-
-    /**
      * Set the additional info for the token.
-     * @param mixed $additionalInfo Any additional info you want to convey along with the token. Default value is null
+     * @param ?string $additionalInfo Any additional info you want to convey along with the token, as string. Default value is null
+     * @param ?string $encryptionKey If not empty, the data will be encrypted using Oirë Colloportus
+     * @see https://github.com/Oire/Colloportus
      * @return $this
      */
-    public function setAdditionalInfo($additionalInfo = null): self
+    public function setAdditionalInfo(?string $additionalInfo = null, ?string $encryptionKey = null): self
     {
+        if (!empty($encryptionKey)) {
+            try {
+                $this->additionalInfo = Colloportus::encrypt($additionalInfo, $encryptionKey);
+            } catch (ColloportusException $e) {
+                throw OsstException::encryptionError($e);
+            }
+        }
+
         $this->additionalInfo = $additionalInfo;
 
         return $this;
@@ -323,11 +327,35 @@ final class Osst
             throw OsstException::emptyExpirationDate();
         }
 
-        if (!empty($this->additionalInfo) && !is_string($this->additionalInfo)) {
-            throw new OsstException(sprintf('Additional info must be a string when storing to database, %s given.', gettype($this->additionalInfo)));
-        }        
+        try {
+            $rawToken = Base64::decode($this->token);
+        } catch (Base64Exception $e) {
+            throw TokenError::invalidTokenFormat($e->getMessage(), $e);
+        }
 
+        if (mb_strlen($rawToken, '8bit') !== self::TOKEN_SIZE) {
+            throw TokenError::invalidTokenLength();
+        }
 
+        $selector = Base64::encode(mb_substr($rawToken, 0, self::SELECTOR_SIZE, '8bit'));
+        $verifier = Base64::encode(hash(Colloportus::HASH_FUNCTION, mb_substr($rawToken, self::SELECTOR_SIZE, self::VERIFIER_SIZE, '8bit'), true));
 
+        $sql = sprintf('INSERT INTO %s (user_id, token_type, selector, verifier, additional_info, expires_at) VALUES (:userid, :tokentype, :selector, :verifier, :additional, :expires)', self::TABLE_NAME);
+        $statement = $this->dbConnection->prepare($sql);
+
+        $statement->bindParam(':userid', $this->userId, PDO::PARAM_INT);
+        $statement->bindParam(':tokentype', $this->tokenType, PDO::PARAM_INT);
+        $statement->bindParam(':selector', $selector, PDO::PARAM_STR);
+        $statement->bindParam(':verifier', $verifier, PDO::PARAM_STR);
+        $statement->bindParam(':additional', $this->additionalInfo, PDO::PARAM_STR);
+        $statement->bindParam(':expires', sprintf('@%s', $this->expirationDate), PDO::PARAM_INT);
+
+        try {
+            $statement->execute();
+        } catch (PDOException $e) {
+            throw TokenError::sqlError($e);
+        }
+
+        return $this;
     }
 }

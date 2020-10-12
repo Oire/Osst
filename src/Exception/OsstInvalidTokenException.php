@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Oire\Exception;
+namespace Oire\Osst\Exception;
 
 use RuntimeException;
 use Throwable;
@@ -38,12 +38,12 @@ final class OsstInvalidTokenException extends RuntimeException
     public const TOKEN_SELECTOR_ERROR = 4;
     public const TOKEN_VERIFIER_ERROR = 5;
 
-    public static function sqlError(Throwable $e)
+    public static function sqlError(Throwable $e): self
     {
         return new static(sprintf('SQL error: %s.', $e->getMessage()), self::SQL_ERROR, $e);
     }
 
-    public static function invalidTokenFormat(string $message, \Exception $e): self
+    public static function invalidTokenFormat(string $message, Throwable $e): self
     {
         return new static(sprintf('The token format is invalid: %s.', $message), self::TOKEN_FORMAT_INVALID, $e);
     }

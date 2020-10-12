@@ -1,8 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Oire\Exception;
+namespace Oire\Osst\Exception;
 
+use Oire\Colloportus\Exception\ColloportusException;
 use RuntimeException;
 use Throwable;
 
@@ -30,7 +31,7 @@ use Throwable;
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
 */
-final class OsstException extends RuntimeException
+class OsstException extends RuntimeException
 {
     public function __construct(string $message, ?Throwable $previous)
     {
@@ -47,7 +48,7 @@ final class OsstException extends RuntimeException
         return new static('The expiration interval must not be empty.');
     }
 
-    public static function invalidExpirationInterval(string $interval, string $message, \Exception $e): self
+    public static function invalidExpirationInterval(string $interval, string $message, Throwable $e): self
     {
         return new static(sprintf('%s is not a valid expiration interval: %s.', $interval, $message), $e);
     }
@@ -65,5 +66,15 @@ final class OsstException extends RuntimeException
     public static function propertyAlreadySet(string $property): self
     {
         return new static(sprintf('%s is already set in token validation.', $property));
+    }
+
+    public static function encryptionError(ColloportusException $e): self
+    {
+        return new static(sprintf('Unable to encrypt additional info: %s.', $e->getMessage()), $e);
+    }
+
+    public static function decryptionError(ColloportusException $e): self
+    {
+        return new static(sprintf('Unable to decrypt additional info: %s.', $e->getMessage()), $e);
     }
 }
