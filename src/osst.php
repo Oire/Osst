@@ -36,7 +36,7 @@ use Throwable;
  *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
-*/
+ */
 final class Osst
 {
     public const TOKEN_SIZE = 48;
@@ -79,8 +79,7 @@ final class Osst
 
     /**
      * Get the connection to the database.
-     * @return PDO
-    */
+     */
     public function getDbConnection(): PDO
     {
         return $this->dbConnection;
@@ -89,8 +88,7 @@ final class Osst
     /**
      * Get the token.
      * @throws OsstException If the token was not set or created beforehand
-     * @return string
-    */
+     */
     public function getToken(): string
     {
         return $this->token;
@@ -98,7 +96,7 @@ final class Osst
 
     /**
      * Set and validate a user-provided token.
-     * @param string $token The token provided by the user
+     * @param string  $token                       The token provided by the user
      * @param ?string $additionalInfoDecryptionKey If not empty, the previously additional info for the token will be decrypted using Oirë Colloportus
      * @see https://github.com/Oire/Colloportus
      * @throws TokenError
@@ -162,8 +160,7 @@ final class Osst
 
     /**
      * Get the ID of the user the token belongs to.
-     * @return int
-    */
+     */
     public function getUserId(): int
     {
         return $this->userId;
@@ -171,7 +168,7 @@ final class Osst
 
     /**
      * Set the ID of the user the token belongs to.
-     * @param int $userId The ID of the user the token belongs to. Must be a positive integer.
+     * @param  int           $userId The ID of the user the token belongs to. Must be a positive integer.
      * @throws OsstException
      * @return $this
      */
@@ -192,8 +189,7 @@ final class Osst
 
     /**
      * Get the expiration date of the token.
-     * @return DateTimeImmutable
-    */
+     */
     public function getExpirationDate(): DateTimeImmutable
     {
         return $this->expirationDate;
@@ -202,10 +198,9 @@ final class Osst
     /**
      * Get the expiration date of the token in a given format.
      * @param string $format A valid date format. Defaults to `'Y-m-d H:i:s'`
-     샔* @see https://www.php.net/manual/en/function.date.php
+     * @see https://www.php.net/manual/en/function.date.php
      * @throws OsstException if the date formatting fails
-     * @return string
-    */
+     */
     public function getExpirationDateFormatted(string $format = 'Y-m-d H:i:s'): string
     {
         try {
@@ -244,8 +239,8 @@ final class Osst
     /**
      * Check if the token is expired.
      * @throws OsstException if the expiration date is empty
-     * @return bool True if the token is expired, false otherwise
-    */
+     * @return bool          True if the token is expired, false otherwise
+     */
     public function isExpired(): bool
     {
         if (empty($this->expirationDate)) {
@@ -260,7 +255,7 @@ final class Osst
     /**
      * Get the token type.
      * @return ?int
-    */
+     */
     public function getTokenType(): ?int
     {
         return $this->tokenType;
@@ -268,7 +263,7 @@ final class Osst
 
     /**
      * Set the token type.
-     * @param int $tokenType Set this if you want to categorize your tokens by type. The default value is null
+     * @param  int   $tokenType Set this if you want to categorize your tokens by type. The default value is null
      * @return $this
      */
     public function setTokenType(?int $tokenType = null): self
@@ -280,8 +275,7 @@ final class Osst
 
     /**
      * Get the additional info for the token.
-     * @return string
-    */
+     */
     public function getAdditionalInfo(): string
     {
         return $this->additionalInfo;
@@ -290,7 +284,7 @@ final class Osst
     /**
      * Set the additional info for the token.
      * @param ?string $additionalInfo Any additional info you want to convey along with the token, as string. Default value is null
-     * @param ?string $encryptionKey If not empty, the data will be encrypted using Oirë Colloportus
+     * @param ?string $encryptionKey  If not empty, the data will be encrypted using Oirë Colloportus
      * @see https://github.com/Oire/Colloportus
      * @return $this
      */

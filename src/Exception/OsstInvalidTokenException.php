@@ -29,7 +29,7 @@ use Throwable;
  *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
-*/
+ */
 final class OsstInvalidTokenException extends RuntimeException
 {
     public const SQL_ERROR = 1;
@@ -40,26 +40,26 @@ final class OsstInvalidTokenException extends RuntimeException
 
     public static function sqlError(Throwable $e): self
     {
-        return new static(sprintf('SQL error: %s.', $e->getMessage()), self::SQL_ERROR, $e);
+        return new self(sprintf('SQL error: %s.', $e->getMessage()), self::SQL_ERROR, $e);
     }
 
     public static function invalidTokenFormat(string $message, Throwable $e): self
     {
-        return new static(sprintf('The token format is invalid: %s.', $message), self::TOKEN_FORMAT_INVALID, $e);
+        return new self(sprintf('The token format is invalid: %s.', $message), self::TOKEN_FORMAT_INVALID, $e);
     }
 
     public static function invalidTokenLength(): self
     {
-        return new static('Invalid token length.', self::TOKEN_LENGTH_INVALID);
+        return new self('Invalid token length.', self::TOKEN_LENGTH_INVALID);
     }
 
     public static function selectorError(): self
     {
-        return new static('Selector does not match!', self::TOKEN_SELECTOR_ERROR);
+        return new self('Selector does not match!', self::TOKEN_SELECTOR_ERROR);
     }
 
     public static function verifierError(): self
     {
-        return new static('Verifier does not match!', self::TOKEN_VERIFIER_ERROR);
+        return new self('Verifier does not match!', self::TOKEN_VERIFIER_ERROR);
     }
 }
