@@ -51,16 +51,16 @@
         },
         {
             "name": "oire/colloportus",
-            "version": "v2.0",
+            "version": "v2.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Oire/Colloportus.git",
-                "reference": "40bca7adc9564765e5aacc1b57b3cb9baa6834e7"
+                "reference": "a33533a0e7783321ddc52e698364bd41afb42a83"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Oire/Colloportus/zipball/40bca7adc9564765e5aacc1b57b3cb9baa6834e7",
-                "reference": "40bca7adc9564765e5aacc1b57b3cb9baa6834e7",
+                "url": "https://api.github.com/repos/Oire/Colloportus/zipball/a33533a0e7783321ddc52e698364bd41afb42a83",
+                "reference": "a33533a0e7783321ddc52e698364bd41afb42a83",
                 "shasum": ""
             },
             "require": {
@@ -91,7 +91,7 @@
                 }
             ],
             "description": "Password hashing and encryption library.",
-            "time": "2020-09-13T22:31:00+00:00"
+            "time": "2020-10-18T21:25:56+00:00"
         }
     ],
     "packages-dev": [
