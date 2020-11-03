@@ -43,6 +43,10 @@ final class OsstInvalidTokenException extends RuntimeException
         return new self(sprintf('SQL error: %s.', $e->getMessage()), self::SQL_ERROR, $e);
     }
 
+    public static function pdoStatementError(string $message): self
+    {
+        return new self(sprintf('PDO statement failed: %s.', $message), self::SQL_ERROR);
+    }
     public static function invalidTokenFormat(string $message, Throwable $e): self
     {
         return new self(sprintf('The token format is invalid: %s.', $message), self::TOKEN_FORMAT_INVALID, $e);

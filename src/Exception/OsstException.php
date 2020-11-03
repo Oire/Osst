@@ -33,29 +33,34 @@ use Throwable;
  */
 class OsstException extends RuntimeException
 {
-    public function __construct(string $message, ?Throwable $previous)
+    public function __construct(string $message, ?Throwable $previous = null)
     {
         parent::__construct($message, 0, $previous);
     }
 
-    public static function invalidUserId(int $userId): self
+    public static function invalidUserId(?int $userId): self
     {
         return new static(sprintf('Invalid user ID. Should be a positive integer, %d given.', $userId));
     }
 
-    public static function emptyExpirationInterval(): self
+    public static function emptyExpirationOffset(): self
     {
-        return new static('The expiration interval must not be empty.');
+        return new static('Expiration offset must not be empty.');
     }
 
-    public static function invalidExpirationInterval(string $interval, string $message, Throwable $e): self
+    public static function invalidExpirationOffset(string $offset, string $message, Throwable $e): self
     {
-        return new static(sprintf('%s is not a valid expiration interval: %s.', $interval, $message), $e);
+        return new static(sprintf('%s is not a valid expiration offset: %s.', $offset, $message), $e);
     }
 
-    public static function emptyExpirationDate(): self
+    public static function emptyExpirationTime(): self
     {
-        return new static('Expiration date cannot be empty, set or create the token first.');
+        return new static('Expiration time cannot be empty, set or create the token first.');
+    }
+
+    public static function expirationTimeInPast(int $expirationTime): self
+    {
+        return new static(sprintf('Expiration time cannot be in the past. The difference is -%d seconds.', time() - $expirationTime));
     }
 
     public static function tokenNotSet(): self
@@ -68,12 +73,12 @@ class OsstException extends RuntimeException
         return new static(sprintf('%s is already set in token validation.', $property));
     }
 
-    public static function encryptionError(ColloportusException $e): self
+    public static function additionalInfoEncryptionError(ColloportusException $e): self
     {
         return new static(sprintf('Unable to encrypt additional info: %s.', $e->getMessage()), $e);
     }
 
-    public static function decryptionError(ColloportusException $e): self
+    public static function additionalInfoDecryptionError(ColloportusException $e): self
     {
         return new static(sprintf('Unable to decrypt additional info: %s.', $e->getMessage()), $e);
     }
