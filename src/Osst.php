@@ -46,9 +46,12 @@ final class Osst
     public const TABLE_NAME = 'osst_tokens';
     public const DEFAULT_EXPIRATION_DATE_FORMAT = 'Y-m-d H:i:s';
     public const DEFAULT_EXPIRATION_DATE_OFFSET = '+14 days';
+    public const DEFAULT_EXPIRATION_TIME_OFFSET = 1209600;
 
     private $dbConnection;
     private $token;
+    private $selector;
+    private $hashedVerifier;
     private $userId;
     private $expirationTime;
     private $tokenType;
@@ -65,6 +68,7 @@ final class Osst
         try {
             $this->dbConnection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->dbConnection->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+            $this->dbConnection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             $this->dbConnection->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
             $this->dbConnection->setAttribute(PDO::ATTR_CASE, PDO::CASE_NATURAL);
         } catch (PDOException $e) {
@@ -78,13 +82,17 @@ final class Osst
      */
     public function createToken(): self
     {
-        $this->token = Base64::encode(random_bytes(self::TOKEN_SIZE));
+        $rawToken = random_bytes(self::TOKEN_SIZE);
+        $this->token = Base64::encode($rawToken);
+        $this->selector = Base64::encode(mb_substr($rawToken, 0, self::SELECTOR_SIZE, '8bit'));
+        $this->hashedVerifier = Base64::encode(hash(Colloportus::HASH_FUNCTION, mb_substr($rawToken, self::SELECTOR_SIZE, self::VERIFIER_SIZE, '8bit'), true));
 
         return $this;
     }
 
     /**
      * Get the connection to the database.
+     * @return PDO Returns the connection to the database as a PDO object
      */
     public function getDbConnection(): PDO
     {
@@ -94,6 +102,7 @@ final class Osst
     /**
      * Get the token.
      * @throws OsstException If the token was not set or created beforehand
+     * @return string        Returns the token
      */
     public function getToken(): string
     {
@@ -114,10 +123,8 @@ final class Osst
      */
     public function setToken(string $token, ?string $additionalInfoDecryptionKey = null): self
     {
-        $this->token = $token;
-
         try {
-            $rawToken = Base64::decode($this->token);
+            $rawToken = Base64::decode($token);
         } catch (Base64Exception $e) {
             throw TokenError::invalidTokenFormat($e->getMessage(), $e);
         }
@@ -153,6 +160,9 @@ final class Osst
             throw TokenError::verifierError();
         }
 
+        $this->token = $token;
+        $this->selector = $selector;
+        $this->hashedVerifier = $verifier;
         $this->userId = (int) $result['user_id'];
         $this->expirationTime = (int) $result['expiration_time'];
         $this->tokenType = $result['token_type']? (int) $result['token_type']: null;
@@ -209,6 +219,7 @@ final class Osst
 
     /**
      * Get the expiration time of the token as a DateTime immutable object.
+     * @return DateTimeImmutable Returns the expiration time as a DateTimeImmutable in the default time zone set in PHP settings
      */
     public function getExpirationDate(): DateTimeImmutable
     {
@@ -220,6 +231,7 @@ final class Osst
      * @param string $format A valid date format. Defaults to `'Y-m-d H:i:s'`
      * @see https://www.php.net/manual/en/function.date.php
      * @throws OsstException if the date formatting fails
+     * @return string        Returns the expiration time as date string in given format
      */
     public function getExpirationDateFormatted(string $format = self::DEFAULT_EXPIRATION_DATE_FORMAT): string
     {
@@ -275,7 +287,7 @@ final class Osst
                 throw OsstException::expirationTimeInPast($this->expirationTime);
             }
         } catch (Throwable $e) {
-            throw OsstException::invalidExpirationOffset($expires, $e->getMessage(), $e);
+            throw OsstException::invalidExpirationOffset($offset, $e->getMessage(), $e);
         }
 
         return $this;
@@ -384,19 +396,6 @@ final class Osst
             throw OsstException::emptyExpirationTime();
         }
 
-        try {
-            $rawToken = Base64::decode($this->token);
-        } catch (Base64Exception $e) {
-            throw TokenError::invalidTokenFormat($e->getMessage(), $e);
-        }
-
-        if (mb_strlen($rawToken, '8bit') !== self::TOKEN_SIZE) {
-            throw TokenError::invalidTokenLength();
-        }
-
-        $selector = Base64::encode(mb_substr($rawToken, 0, self::SELECTOR_SIZE, '8bit'));
-        $verifier = Base64::encode(hash(Colloportus::HASH_FUNCTION, mb_substr($rawToken, self::SELECTOR_SIZE, self::VERIFIER_SIZE, '8bit'), true));
-
         $sql = sprintf('INSERT INTO %s (user_id, token_type, selector, verifier, additional_info, expiration_time) VALUES (:userid, :tokentype, :selector, :verifier, :additional, :expires)', self::TABLE_NAME);
         $statement = $this->dbConnection->prepare($sql);
 
@@ -408,8 +407,8 @@ final class Osst
             $statement->execute([
                 ':userid' => $this->userId,
                 ':tokentype' => $this->tokenType,
-                ':selector' => $selector,
-                ':verifier' => $verifier,
+                ':selector' => $this->selector,
+                ':verifier' => $this->hashedVerifier,
                 ':additional' => $this->additionalInfo,
                 ':expires' => $this->expirationTime
             ]);
@@ -418,5 +417,77 @@ final class Osst
         }
 
         return $this;
+    }
+
+    /**
+     * Invalidate the token.
+     * @param  bool          $deleteToken If true, the token will be deleted from the database. If false (default), it will be updated with the expiration time set in the past
+     * @throws OsstException
+     * @return $this
+     */
+    public function invalidateToken(bool $deleteToken = false): self
+    {
+        if (empty($this->token)) {
+            throw OsstException::tokenNotSet();
+        }
+
+        $this->expirationTime = time() - self::DEFAULT_EXPIRATION_TIME_OFFSET;
+
+        if ($deleteToken) {
+            $statement = $this->dbConnection->prepare(sprintf('DELETE FROM %s WHERE selector = :selector', self::TABLE_NAME));
+
+            if (!$statement) {
+                throw TokenError::pdoStatementError($this->dbConnection->errorInfo()[2]);
+            }
+
+            try {
+                $statement->execute([':selector' => $this->selector]);
+            } catch (PdoException $e) {
+                throw TokenError::sqlError($e);
+            }
+
+            $this->token = null;
+            $this->selector = null;
+            $this->hashedVerifier = null;
+        } else {
+            $statement = $this->dbConnection->prepare(sprintf('UPDATE %s SET expiration_time = :expires WHERE selector = :selector', self::TABLE_NAME));
+
+            if (!$statement) {
+                throw TokenError::pdoStatementError($this->dbConnection->errorInfo()[2]);
+            }
+
+            try {
+                $statement->execute([
+                    ':expires' => $this->expirationTime,
+                    ':selector' => $this->selector
+                ]);
+            } catch (PdoException $e) {
+                throw TokenError::sqlError($e);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Delete all expired tokens from database.
+     * @param  PDO $dbConnection Connection to the database
+     * @return int Returns the number of deleted tokens
+     */
+    public static function clearExpiredTokens(PDO $dbConnection): int
+    {
+        $statement = $dbConnection->prepare(sprintf('DELETE FROM %s WHERE expiration_time <= :time', self::TABLE_NAME));
+
+        if (!$statement) {
+            throw TokenError::pdoStatementError($dbConnection->errorInfo()[2]);
+        }
+
+        try {
+            $statement->execute([':time' => time()]);
+
+            return $statement->rowCount();
+        } catch (PdoException $e) {
+            throw TokenError::sqlError($e);
+        }
     }
 }

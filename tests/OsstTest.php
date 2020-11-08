@@ -114,6 +114,36 @@ class OsstTest extends TestCase
         self::assertNull($osst->getAdditionalInfo());
     }
 
+    public function testInvalidateToken(): void
+    {
+        $startOsst = (new Osst(self::$db))->createToken();
+        $expirationDate = (new DateTimeImmutable())->modify(Osst::DEFAULT_EXPIRATION_DATE_OFFSET);
+        $token = $startOsst->getToken();
+        $startOsst->setUserId(self::TEST_USER_ID)->setTokenType(self::TEST_TOKEN_TYPE)->setExpirationDate($expirationDate)->persist();
+
+        $osst = (new Osst(self::$db))->setToken($token);
+
+        self::assertSame($token, $osst->getToken());
+        self::assertFalse($osst->isExpired());
+
+        $osst->invalidateToken();
+        self::assertTrue($osst->isExpired());
+    }
+
+    public function testClearExpiredTokens(): void
+    {
+        self::$db->query(sprintf('DELETE FROM %s', Osst::TABLE_NAME));
+        $osst1 = (new Osst(self::$db))->createToken()->setUserId(1)->setExpirationTime(time() + 3600)->persist();
+        $osst2 = (new Osst(self::$db))->createToken()->setUserId(2)->setExpirationTime(time() + 3660)->persist();
+        $osst3 = (new Osst(self::$db))->createToken()->setUserId(3)->setExpirationTime(time() + 3720)->persist();
+
+        $osst1->invalidateToken();
+        $osst2->invalidateToken();
+        $osst3->invalidateToken(true);
+
+        self::assertSame(2, Osst::clearExpiredTokens(self::$db));
+    }
+
     public function testTrySetExpirationTimeInPast(): void
     {
         self::expectException(OsstException::class);

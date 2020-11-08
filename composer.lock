@@ -697,12 +697,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/Oire/php-code-style.git",
-                "reference": "438c38e717b5147740fbda49b30536c9e52c892d"
+                "reference": "9911550c111464d978dc9a9fa9dfcb3aaa77aa12"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Oire/php-code-style/zipball/438c38e717b5147740fbda49b30536c9e52c892d",
-                "reference": "438c38e717b5147740fbda49b30536c9e52c892d",
+                "url": "https://api.github.com/repos/Oire/php-code-style/zipball/9911550c111464d978dc9a9fa9dfcb3aaa77aa12",
+                "reference": "9911550c111464d978dc9a9fa9dfcb3aaa77aa12",
                 "shasum": ""
             },
             "require": {
