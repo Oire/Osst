@@ -223,7 +223,8 @@ final class Osst
      */
     public function getExpirationDate(): DateTimeImmutable
     {
-        return         (new DateTimeImmutable(sprintf('@%s', $this->expirationTime)))->setTimezone(new DateTimeZone(date_default_timezone_get()));
+        return         (new DateTimeImmutable(sprintf('@%s', $this->expirationTime)))
+            ->setTimezone(new DateTimeZone(date_default_timezone_get()));
     }
 
     /**
@@ -244,11 +245,11 @@ final class Osst
 
     /**
      * Set the expiration time for the token using timestamp.
-     * @param  int           $timestamp The timestamp when the token should expire
+     * @param  int           $timestamp The timestamp when the token should expire, defaults to 1209600 seconds, i.e., 14 days
      * @throws OsstException
      * @return $this
      */
-    public function setExpirationTime(int $timestamp): self
+    public function setExpirationTime(int $timestamp = self::DEFAULT_EXPIRATION_TIME_OFFSET): self
     {
         if ($this->expirationTime) {
             throw OsstException::propertyAlreadySet('Expiration time');
@@ -315,7 +316,7 @@ final class Osst
      * @throws OsstException if the expiration date is empty
      * @return bool          True if the token is expired, false otherwise
      */
-    public function isExpired(): bool
+    public function tokenIsExpired(): bool
     {
         if (empty($this->expirationTime)) {
             throw OsstException::emptyExpirationTime();
@@ -425,7 +426,7 @@ final class Osst
      * @throws OsstException
      * @return $this
      */
-    public function invalidateToken(bool $deleteToken = false): self
+    public function invalidateToken(bool $deleteToken = false): void
     {
         if (empty($this->token)) {
             throw OsstException::tokenNotSet();
@@ -465,8 +466,6 @@ final class Osst
                 throw TokenError::sqlError($e);
             }
         }
-
-        return $this;
     }
 
     /**

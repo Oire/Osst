@@ -124,10 +124,10 @@ class OsstTest extends TestCase
         $osst = (new Osst(self::$db))->setToken($token);
 
         self::assertSame($token, $osst->getToken());
-        self::assertFalse($osst->isExpired());
+        self::assertFalse($osst->tokenIsExpired());
 
         $osst->invalidateToken();
-        self::assertTrue($osst->isExpired());
+        self::assertTrue($osst->tokenIsExpired());
     }
 
     public function testClearExpiredTokens(): void
