@@ -30,7 +30,7 @@ Run `./vendor/bin/phpunit` in the project directory.
 ## Usage
 
 Osst uses fluent interface, i.e., all necessary methods can be chained.  
-Each time you instantiate a new Osst object, you need to provide a database connection as a PDO instance. If you don't use PDO yet, consider using it, it's convenient. If you use an ORM, you most likely have a `getPdo()` or a similar method.  
+Each time you instantiate a new Osst object, you need to provide a database connection as a PDO instance. If you don’t use PDO yet, consider using it, it’s convenient. If you use an ORM, you most likely have a `getPdo()` or a similar method.  
 Support for popular ORMs is planned for a future version.
 
 ### Create a Table
@@ -60,14 +60,14 @@ The field lengths are optimal, the only one you may need to adjust is `additiona
 
 ### Create a Token
 
-first you need to create a token. There are some required and some optional fields you can set. If you don't set any of the required fields, an `OsstException` will be thrown.
+first you need to create a token. There are some **required** properties (marked in bold) and some *optional* ones (marked in italic) you can set. If you don’t set any of the required properties, an `OsstException` will be thrown.
 
 * `userId`, **required** — ID of the user the token belongs to, as an integer.
 * `expirationTime`, **required** — Time when the token expires. Stored as timestamp (big integer), but can be set in various ways, see below.
 * `tokenType`, *optional* — If you want to perform an additional check of the token (say, separate password recovery tokens from e-mail change tokens), you may set a token type as an integer.
 * `additionalInfo`, *optional* — Any additional information you want to convey with the token, as string. For instance, you can pass some JSON data here. The information can be additionally encrypted, see below.
 
-To create a token for user with ID of `123` and with token type of `3` expiring in an hour and store it into the database, do the following:
+To create a token for user with ID of `123` and with token type of `3` expiring in an hour, and store it into the database, do the following:
 
 ```php
 use Oire\Osst\Osst;
@@ -86,10 +86,9 @@ Use `$osst->getToken()` to actually get the newly created token as a string.
 
 ### Set and Validate a User-Provided Token
 
-If you received an Osst token from the user, you also need to instantiate Osst and validate the token. You don't need to set all the fields as they are stored in the database.
+If you received an Osst token from the user, you also need to instantiate Osst and validate the token. You don't need to set all the properties as their values are taken from the database.
 
 ```php
-use Oire\Osst\Exception\OsstException;
 use Oire\Osst\Exception\OsstInvalidTokenException as tokenError;
 use Oire\Osst\Osst;
 
@@ -128,7 +127,7 @@ $deletedTokens = Osst::clearExpiredTokens($dbConnection);
 
 ### Three Ways of Setting Expiration Time
 
-You may set expiration time in various ways, as you like:
+You may set expiration time in three different ways, as you like:
 
 * `setExpirationTime()` — Accepts a raw timestamp as integer. Defaults to 1209600 seconds, i.e., 14 days.
 * `setExpirationDate()` — Accepts a `DateTimeImmutable` object.
@@ -143,7 +142,7 @@ You may set expiration time in various ways, as you like:
 ### Encrypt Additional Information
 
 You may store some sensitive data in the additional information for the token such as old and new e-mail address and similar things.  
-**Note**! Do **not** store passwords in this field, it can be decrypted! Passwords must not be decryptable, they must be hashed instead. If you need to handle passwords, use [Oirë Colloportus](https://github.com/Oire/Colloportus), a library suitable for proper password hashing. You may store password hashes in this field, though.  
+**Note**! Do **not** store passwords in this property, it can be decrypted! Passwords must not be decryptable, they must be hashed instead. If you need to handle passwords, use [Oirë Colloportus](https://github.com/Oire/Colloportus), a library suitable for proper password hashing. You may store password hashes in this property, though.  
 If your additional info contains sensitive data, you can encrypt it. To do this, you first need to have a key created by the [Colloportus](https://github.com/Oire/Colloportus) library.  
 Colloportus gets installed with Osst, so you don't need to add anything to your composer.json file, just do the following:
 
@@ -152,7 +151,7 @@ use Oire\Colloportus\Colloportus;
 use Oire\Osst\Osst;
 
 $key = Colloportus::createKey();
-// Store the key somewhere safe, i.e., to an environment variable
+// Store the key somewhere safe, i.e., in an environment variable
 $additionalInfo = '{"oldEmail": "john@example.com", "newEmail": "john.doe@example.com"}';
 $osst = (new Osst($dbConnection))
     ->createToken()
@@ -181,9 +180,9 @@ Below all of the Osst methods are outlined.
 * `createToken()` — Create a new token. Returns `$this` for chainability.
 * `getDbConnection()` — Get the database connection for the current Osst instance as a PDO object.
 * `getToken()` — Get the token for the current Osst instance as a string. Throws `OsstException` if the token was not created or set before.
-* `setToken(string $token, ?string $additionalInfoDecryptionKey = null)` — Set and validate a user-provided token. If the `$additionalInfoDecryptionKey` parameter is set and is not empty, tries to decrypt the additional information for the token with the key provided. Returns `$this` for chainability.
+* `setToken(string $token, string|null $additionalInfoDecryptionKey = null)` — Set and validate a user-provided token. If the `$additionalInfoDecryptionKey` parameter is set and is not empty, tries to decrypt the additional information for the token with the key provided. Returns `$this` for chainability.
 * `getUserId()` — Get the ID of the user the token belongs to, as an integer.
-* `setUserId(int $userId)` — Set the user ID for the newly created token. Do not use this method and similar methods when validating a user-provided token. Returns `$this` for chainability.
+* `setUserId(int $userId)` — Set the user ID for the newly created token. Do not use this method and similar methods when validating a user-provided token, use them only when creating a new token. Returns `$this` for chainability.
 * `getExpirationTime()` — Get expiration time for the token as raw timestamp. Returns integer.
 * `getExpirationDate()` — Get expiration time for the token as a DateTimeImmutable object. Returns the date in the current time zone of your PHP server.
 * `getExpirationDateFormatted(string $format = 'Y-m-d H:i:s')` — Get expiration time for the token as date string. The default format is `2020-11-15 12:34:56`. The `$format` parameter must be a valid [date format](https://www.php.net/manual/en/function.date.php).
@@ -192,12 +191,12 @@ Below all of the Osst methods are outlined.
 * `setExpirationDate(DateTimeImmutable $expirationDate)` — Set expiration time for the token as a [DateTimeImmutable](https://www.php.net/manual/en/class.datetimeimmutable.php) object. Returns `$this` for chainability.
 * `tokenIsExpired()` — Check if the token is expired. Returns `true` if the token has already expired, `false` otherwise.
 * `getTokenType()` — Get the type for the current token. Returns integer if the token type was set before, or null if the token has no type.
-* `setTokenType(?int $tokenType)` — Set the type for the current token, as integer or null. Returns `$this` for chainability.
+* `setTokenType(int|null $tokenType)` — Set the type for the current token, as integer or null. Returns `$this` for chainability.
 * `getAdditionalInfo()` — Get additional info for the token. Returns string or null, if additional info was not set before.
-* `setAdditionalInfo(?string $additionalInfo, ?string $encryptionKey = null)` — Set additional info for the current token. If the `$encryptionKey` parameter is not empty, tries to encrypt the additional information using the [Colloportus](https://github.com/Oire/Colloportus) library. Returns `$this` for chainability.
+* `setAdditionalInfo(string|null $additionalInfo, string|null $encryptionKey = null)` — Set additional info for the current token. If the `$encryptionKey` parameter is not empty, tries to encrypt the additional information using the [Colloportus](https://github.com/Oire/Colloportus) library. Returns `$this` for chainability.
 * `persist()` — Store the token into the database. Returns `$this` for chainability.
-* `invalidateToken(bool $deleteToken = false)` — Invalidate the current token after it is used. If the `$deleteToken` parameter is set to `true`, the token will be deleted from the databased. If it is set to `false` (default), the expiration time for the token will be updated and set to a value in the past. The method returns no value.
-* `clearExpiredTokens(PDO $dbConnection)` — Delete all expired tokens from the database. As it is a static method, it receives the database connection as a PDO object. Returns the number of deleted tokens, as integer.
+* `invalidateToken(bool $deleteToken = false)` — Invalidate the current token after it is used. If the `$deleteToken` parameter is set to `true`, the token will be deleted from the database, and `getToken()` will return `null`. If it is set to `false` (default), the expiration time for the token will be updated and set to a value in the past. The method returns no value.
+* `static clearExpiredTokens(PDO $dbConnection)` — Delete all expired tokens from the database. As it is a static method, it receives the database connection as a PDO object. Returns the number of deleted tokens, as integer.
 
 ## Contributing
 
