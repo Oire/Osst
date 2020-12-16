@@ -1,6 +1,7 @@
 # Osst, Simple Yet Secure Tokens Suitable for Authentication Cookies and Password Recovery
 
-[![Build Status](https://api.travis-ci.com/Oire/Osst.svg?branch=master)](https://travis-ci.com/github/Oire/Osst)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/Oire/Osst.svg?style=flat-square)](https://packagist.org/packages/Oire/Osst)
+[![GitHub Tests Action Status](https://img.shields.io/github/workflow/status/Oire/Osst/run-tests?label=tests)](https://github.com/Oire/Osst/actions?query=workflow%3Arun-tests+branch%3Amaster)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Oire/Osst/blob/master/LICENSE)
 
 Welcome to Osst, Oirë Simple Split Tokens!  
@@ -27,7 +28,7 @@ composer require oire/osst
 
 Run `./vendor/bin/phpunit` in the project directory.
 
-## Usage
+## Usage Examples
 
 Osst uses fluent interface, i.e., all necessary methods can be chained.  
 Each time you instantiate a new Osst object, you need to provide a database connection as a PDO instance. If you don’t use PDO yet, consider using it, it’s convenient. If you use an ORM, you most likely have a `getPdo()` or a similar method.  
@@ -98,9 +99,9 @@ try {
     // Something went wrong with the token: either it is invalid, not found or has been tampered with
 }
 
-if ($osst->tokenIsExpired() {
+if ($osst->tokenIsExpired()) {
     // The token is correct but expired
-})
+}
 ```
 
 **Note**! An expired token is considered settable, i.e., not valid per se but correct, so no exception is thrown in this case, you have to check it manually as shown above. If this behavior is non-intuitive or inconvenient, please create a Github issue.
@@ -129,7 +130,7 @@ $deletedTokens = Osst::clearExpiredTokens($dbConnection);
 
 You may set expiration time in three different ways, as you like:
 
-* `setExpirationTime()` — Accepts a raw timestamp as integer. Defaults to 1209600 seconds, i.e., 14 days.
+* `setExpirationTime()` — Accepts a raw timestamp as integer. If null, defaults to current time plus 14 days.
 * `setExpirationDate()` — Accepts a `DateTimeImmutable` object.
 * `setExpirationOffset()` — Accepts a [relative datetime format](https://www.php.net/manual/en/datetime.formats.relative.php). Default is `+14 days`.
 
@@ -186,7 +187,7 @@ Below all of the Osst methods are outlined.
 * `getExpirationTime()` — Get expiration time for the token as raw timestamp. Returns integer.
 * `getExpirationDate()` — Get expiration time for the token as a DateTimeImmutable object. Returns the date in the current time zone of your PHP server.
 * `getExpirationDateFormatted(string $format = 'Y-m-d H:i:s')` — Get expiration time for the token as date string. The default format is `2020-11-15 12:34:56`. The `$format` parameter must be a valid [date format](https://www.php.net/manual/en/function.date.php).
-* `setExpirationTime(int $timestamp = 1209600)` — Set expiration time for the token as a raw timestamp. The default value is `1209600` seconds, i.e., 14 days. Returns `$this` for chainability.
+* `setExpirationTime(int|null $timestamp = null)` — Set expiration time for the token as a raw timestamp. If the timestamp is null, defaults to the current time plus 14 days.
 * `setExpirationOffset(string $offset = '+14 days')` — Set expiration time for the token as a relative time offset. The default value is `+14 days`. The `$offset` parameter must be a valid [relative time format](https://www.php.net/manual/en/datetime.formats.relative.php). Returns `$this` for chainability.
 * `setExpirationDate(DateTimeImmutable $expirationDate)` — Set expiration time for the token as a [DateTimeImmutable](https://www.php.net/manual/en/class.datetimeimmutable.php) object. Returns `$this` for chainability.
 * `tokenIsExpired()` — Check if the token is expired. Returns `true` if the token has already expired, `false` otherwise.

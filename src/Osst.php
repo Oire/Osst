@@ -249,11 +249,13 @@ final class Osst
      * @throws OsstException
      * @return $this
      */
-    public function setExpirationTime(int $timestamp = self::DEFAULT_EXPIRATION_TIME_OFFSET): self
+    public function setExpirationTime(?int $timestamp = null): self
     {
         if ($this->expirationTime) {
             throw OsstException::propertyAlreadySet('Expiration time');
         }
+
+        $timestamp = $timestamp ?? time() + self::DEFAULT_EXPIRATION_TIME_OFFSET;
 
         if ($timestamp <= time()) {
             throw OsstException::expirationTimeInPast($timestamp);
