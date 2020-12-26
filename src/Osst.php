@@ -165,7 +165,7 @@ final class Osst
         $this->hashedVerifier = $verifier;
         $this->userId = (int) $result['user_id'];
         $this->expirationTime = (int) $result['expiration_time'];
-        $this->tokenType = $result['token_type']? (int) $result['token_type']: null;
+        $this->tokenType = $result['token_type'] ? (int) $result['token_type'] : null;
 
         if (!empty($additionalInfoDecryptionKey)) {
             try {
@@ -223,7 +223,7 @@ final class Osst
      */
     public function getExpirationDate(): DateTimeImmutable
     {
-        return         (new DateTimeImmutable(sprintf('@%s', $this->expirationTime)))
+        return (new DateTimeImmutable(sprintf('@%s', $this->expirationTime)))
             ->setTimezone(new DateTimeZone(date_default_timezone_get()));
     }
 

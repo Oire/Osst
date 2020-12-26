@@ -20,16 +20,16 @@ class OsstTest extends TestCase
     private const TEST_ADDITIONAL_INFO = '{"oldEmail":"test@example.com","newEmail":"john.doe@example.com"}';
 
     private const CREATE_TABLE_SQL = <<<SQL
-        CREATE TABLE %s (
-            id INTEGER NOT NULL PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            token_type INTEGER,
-            selector TEXT NOT NULL UNIQUE,
-            verifier TEXT NOT NULL UNIQUE,
-            additional_info TEXT,
-            expiration_time BIGINT NOT NULL
-        );
-    SQL;
+            CREATE TABLE %s (
+                id INTEGER NOT NULL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                token_type INTEGER,
+                selector TEXT NOT NULL UNIQUE,
+                verifier TEXT NOT NULL UNIQUE,
+                additional_info TEXT,
+                expiration_time BIGINT NOT NULL
+            );
+        SQL;
 
     private static $db;
 
