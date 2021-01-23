@@ -9,8 +9,8 @@ use Throwable;
 /**
  * Oirë Simple Split Tokens (OSST)
  * Implements the split token authentication model proposed by Paragon Initiatives.
- * Copyright © 2020 Andre Polykanine also known as Menelion Elensúlë, The Magical Kingdom of Oirë, https://github.com/Oire
- * Idea Copyright © 2017, Paragon Initiatives, https://paragonie.com/blog/2017/02/split-tokens-token-based-authentication-protocols-without-side-channels
+ * Copyright © 2020-2021 Andre Polykanine also known as Menelion Elensúlë, The Magical Kingdom of Oirë, https://github.com/Oire
+ * Idea Copyright © 2017 Paragon Initiatives, https://paragonie.com/blog/2017/02/split-tokens-token-based-authentication-protocols-without-side-channels
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,7 @@ final class OsstInvalidTokenException extends RuntimeException
     {
         return new self(sprintf('PDO statement failed: %s.', $message), self::SQL_ERROR);
     }
+
     public static function invalidTokenFormat(string $message, Throwable $e): self
     {
         return new self(sprintf('The token format is invalid: %s.', $message), self::TOKEN_FORMAT_INVALID, $e);

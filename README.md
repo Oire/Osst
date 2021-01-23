@@ -1,7 +1,6 @@
 # Osst, Simple Yet Secure Tokens Suitable for Authentication Cookies and Password Recovery
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/Oire/Osst.svg?style=flat-square)](https://packagist.org/packages/Oire/Osst)
-[![GitHub Tests Action Status](https://img.shields.io/github/workflow/status/Oire/Osst/run-tests?label=tests)](https://github.com/Oire/Osst/actions?query=workflow%3Arun-tests+branch%3Amaster)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Oire/Osst/blob/master/LICENSE)
 
 Welcome to Osst, Oirë Simple Split Tokens!  
@@ -49,7 +48,7 @@ CREATE TABLE `osst_tokens` (
     `additional_info` TEXT(300) NULL,
     `expiration_time` BIGINT(20) UNSIGNED NOT NULL,
     UNIQUE `token` (`selector`, `verifier`),
-    CONSTRAINT `fk_token_user`
+    CONSTRAINT `fk_token_user_id`
         FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
         ON DELETE CASCADE
         ON UPDATE RESTRICT
@@ -61,7 +60,7 @@ The field lengths are optimal, the only one you may need to adjust is `additiona
 
 ### Create a Token
 
-first you need to create a token. There are some **required** properties (marked in bold) and some *optional* ones (marked in italic) you can set. If you don’t set any of the required properties, an `OsstException` will be thrown.
+first you need to create a token. There are some **required** properties (marked in bold) and some *optional* ones (marked in italic) you can set. If you don’t set one or more of the required properties, an `OsstException` will be thrown.
 
 * `userId`, **required** — ID of the user the token belongs to, as an integer.
 * `expirationTime`, **required** — Time when the token expires. Stored as timestamp (big integer), but can be set in various ways, see below.
@@ -104,7 +103,7 @@ if ($osst->tokenIsExpired()) {
 }
 ```
 
-**Note**! An expired token is considered settable, i.e., not valid per se but correct, so no exception is thrown in this case, you have to check it manually as shown above. If this behavior is non-intuitive or inconvenient, please create a Github issue.
+**Note**! An expired token is considered settable, i.e., not valid per se but correct, so no exception is thrown in this case, you have to check it manually as shown above. If this behavior is non-intuitive or inconvenient, please [create a Github issue](https://github.com/Oire/Osst/issues/new).
 
 ### Invalidate a Token
 
@@ -170,7 +169,7 @@ If you received a user-provided token whose additional info is encrypted, pass t
 
 Osst throws two types of exceptions:
 
-* `OsstInvalidTokenException` is thrown when something really wrong happens to the token itself or to SQL queries related to the token (for example, a token is not found, its length is invalid or a PDO statement cannot be executed);
+* `OsstInvalidTokenException` is thrown when something really wrong happens to the token itself or to SQL queries related to the token (for example, a token is not found, it has been tampered with, its length is invalid or a PDO statement cannot be executed);
 * `OsstException` is thrown in most cases when you do something erroneously (for example, try to store an empty token into the database, forget to set a required property or try to set such a property when validating a user-provided token, try to set expiration time which is in the past etc.).
 
 ## Methods
@@ -205,5 +204,5 @@ All contributions are welcome. Please fork, make a feature branch, hack on the c
 
 ## License
 
-Copyright © 2020, Andre Polykanine also known as Menelion Elensúlë, [The Magical Kingdom of Oirë](https://github.com/Oire/).  
+Copyright © 2020-2021, Andre Polykanine also known as Menelion Elensúlë, [The Magical Kingdom of Oirë](https://github.com/Oire/).  
 This software is licensed under an MIT license.

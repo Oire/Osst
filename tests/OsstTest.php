@@ -8,6 +8,30 @@ use Oire\Osst\Osst;
 use Pdo;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Oirë Simple Split Tokens (OSST)
+ * Implements the split token authentication model proposed by Paragon Initiatives.
+ * Copyright © 2020-2021 Andre Polykanine also known as Menelion Elensúlë, The Magical Kingdom of Oirë, https://github.com/Oire
+ * Idea Copyright © 2017 Paragon Initiatives, https://paragonie.com/blog/2017/02/split-tokens-token-based-authentication-protocols-without-side-channels
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the "Software"), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is
+ *  furnished to do so, subject to the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
+ */
 class OsstTest extends TestCase
 {
     // Oire\Base64\Base64::encode(hex2bin('0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324'));
@@ -31,6 +55,7 @@ class OsstTest extends TestCase
             );
         SQL;
 
+    /** @var PDO */
     private static $db;
 
     public static function setUpBeforeClass(): void
@@ -59,6 +84,7 @@ class OsstTest extends TestCase
 
         $osst = (new Osst(self::$db))->setToken(self::TEST_TOKEN);
 
+        self::assertSame(self::$db, $osst->getDbConnection());
         self::assertSame(self::TEST_TOKEN, $osst->getToken());
         self::assertSame(self::TEST_USER_ID, $osst->getUserId());
         self::assertSame(self::TEST_TOKEN_TYPE, $osst->getTokenType());
@@ -71,7 +97,7 @@ class OsstTest extends TestCase
         $startOsst = (new Osst(self::$db))->createToken();
         $expirationTime = time() + 3600;
         $token = $startOsst->getToken();
-        $startOsst->setUserId(self::TEST_USER_ID)->setExpirationTime($expirationTime)->persist();
+        $startOsst->setUserId(self::TEST_USER_ID)->setExpirationTime($expirationTime)->setAdditionalInfo(self::TEST_ADDITIONAL_INFO)->persist();
 
         $osst = (new Osst(self::$db))->setToken($token);
 
@@ -79,7 +105,7 @@ class OsstTest extends TestCase
         self::assertSame(self::TEST_USER_ID, $osst->getUserId());
         self::assertSame($expirationTime, $osst->getExpirationTime());
         self::assertNull($osst->getTokenType());
-        self::assertNull($osst->getAdditionalInfo());
+        self::assertSame(self::TEST_ADDITIONAL_INFO, $osst->getAdditionalInfo());
     }
 
     public function testCreateTokenAndSetExpirationOffset(): void
@@ -110,7 +136,8 @@ class OsstTest extends TestCase
         self::assertSame($token, $osst->getToken());
         self::assertSame(self::TEST_USER_ID, $osst->getUserId());
         self::assertSame(self::TEST_TOKEN_TYPE, $osst->getTokenType());
-        self::assertSame($expirationDate->getTimestamp(), $osst->getExpirationTime());
+        self::assertSame($expirationDate->getTimestamp(), $osst->getExpirationDate()->getTimestamp());
+        self::assertSame($expirationDate->format(Osst::DEFAULT_EXPIRATION_DATE_FORMAT), $osst->getExpirationDateFormatted());
         self::assertNull($osst->getAdditionalInfo());
     }
 
@@ -149,7 +176,7 @@ class OsstTest extends TestCase
         self::expectException(OsstException::class);
         self::expectExceptionMessage('Expiration time cannot be in the past');
 
-        $osst = (new Osst(self::$db))->createToken()->setUserId(123)->setExpirationTime(time() - 3600)->persist();
+        (new Osst(self::$db))->createToken()->setUserId(123)->setExpirationTime(time() - 3600)->persist();
     }
 
     public function testTryPersistWithTokenNotSet(): void
@@ -157,7 +184,7 @@ class OsstTest extends TestCase
         self::expectException(OsstException::class);
         self::expectExceptionMessage('token is not set');
 
-        $osst = (new Osst(self::$db))->persist();
+        (new Osst(self::$db))->persist();
     }
 
     public function testTryPersistWithInvalidUserId(): void
@@ -165,7 +192,7 @@ class OsstTest extends TestCase
         self::expectException(OsstException::class);
         self::expectExceptionMessage('Invalid user ID');
 
-        $osst = (new Osst(self::$db))->createToken()->persist();
+        (new Osst(self::$db))->createToken()->persist();
     }
 
     public function testTryPersistWithEmptyExpirationTime(): void
@@ -173,7 +200,7 @@ class OsstTest extends TestCase
         self::expectException(OsstException::class);
         self::expectExceptionMessage('Expiration time cannot be empty');
 
-        $osst = (new Osst(self::$db))->createToken()->setUserId(123)->persist();
+        (new Osst(self::$db))->createToken()->setUserId(123)->persist();
     }
 
     public function testInvalidTokenLength(): void
@@ -181,6 +208,6 @@ class OsstTest extends TestCase
         self::expectException(TokenError::class);
         self::expectExceptionMessage('Invalid token length');
 
-        $osst = (new Osst(self::$db))->setToken('abc');
+        (new Osst(self::$db))->setToken('abc');
     }
 }

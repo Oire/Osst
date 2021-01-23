@@ -17,8 +17,8 @@ use Throwable;
 /**
  * Oirë Simple Split Tokens (OSST)
  * Implements the split token authentication model proposed by Paragon Initiatives.
- * Copyright © 2020 Andre Polykanine also known as Menelion Elensúlë, The Magical Kingdom of Oirë, https://github.com/Oire
- * Idea Copyright © 2017, Paragon Initiatives, https://paragonie.com/blog/2017/02/split-tokens-token-based-authentication-protocols-without-side-channels
+ * Copyright © 2020-2021 Andre Polykanine also known as Menelion Elensúlë, The Magical Kingdom of Oirë, https://github.com/Oire
+ * Idea Copyright © 2017 Paragon Initiatives, https://paragonie.com/blog/2017/02/split-tokens-token-based-authentication-protocols-without-side-channels
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the "Software"), to deal
@@ -48,13 +48,28 @@ final class Osst
     public const DEFAULT_EXPIRATION_DATE_OFFSET = '+14 days';
     public const DEFAULT_EXPIRATION_TIME_OFFSET = 1209600;
 
+    /** @var PDO */
     private $dbConnection;
+
+    /** @var string|null */
     private $token;
+
+    /** @var string|null */
     private $selector;
+
+    /** @var string|null */
     private $hashedVerifier;
-    private $userId;
-    private $expirationTime;
+
+    /** @var int */
+    private $userId = 0;
+
+    /** @var int */
+    private $expirationTime = 0;
+
+    /** @var int|null */
     private $tokenType;
+
+    /** @var string|null */
     private $additionalInfo;
 
     /**
@@ -115,8 +130,8 @@ final class Osst
 
     /**
      * Set and validate a user-provided token.
-     * @param string  $token                       The token provided by the user
-     * @param ?string $additionalInfoDecryptionKey If not empty, the previously additional info for the token will be decrypted using Oirë Colloportus
+     * @param string      $token                       The token provided by the user
+     * @param string|null $additionalInfoDecryptionKey If not empty, the previously additional info for the token will be decrypted using Oirë Colloportus
      * @see https://github.com/Oire/Colloportus
      * @throws TokenError
      * @return $this
@@ -139,7 +154,9 @@ final class Osst
         $statement = $this->dbConnection->prepare($sql);
 
         if (!$statement) {
-            throw TokenError::pdoStatementError($this->dbConnection->errorInfo()[2]);
+            /** @var string */
+            $errorMessage = $this->dbConnection->errorInfo()[2] ?? 'Unknown PDO error';
+            throw TokenError::pdoStatementError($errorMessage);
         }
 
         try {
@@ -148,34 +165,54 @@ final class Osst
             throw TokenError::sqlError($e);
         }
 
+        /** @var string[] */
         $result = $statement->fetch();
 
-        if (!$result || count($result) === 0) {
+        if (!$result) {
             throw TokenError::selectorError();
         }
 
         $verifier = Base64::encode(hash(Colloportus::HASH_FUNCTION, mb_substr($rawToken, self::SELECTOR_SIZE, self::VERIFIER_SIZE, '8bit'), true));
 
-        if (!hash_equals($verifier, $result['verifier'])) {
+        if (isset($result['verifier'])) {
+            $validVerifier = $result['verifier'];
+        } else {
+            throw TokenError::verifierError();
+        }
+
+        if (!hash_equals($verifier, $validVerifier)) {
             throw TokenError::verifierError();
         }
 
         $this->token = $token;
         $this->selector = $selector;
         $this->hashedVerifier = $verifier;
-        $this->userId = (int) $result['user_id'];
-        $this->expirationTime = (int) $result['expiration_time'];
-        $this->tokenType = $result['token_type'] ? (int) $result['token_type'] : null;
 
-        if (!empty($additionalInfoDecryptionKey)) {
-            try {
-                $this->additionalInfo = Colloportus::decrypt($result['additional_info'], $additionalInfoDecryptionKey);
-            } catch (ColloportusException $e) {
-                throw OsstException::additionalInfoDecryptionError($e);
-            }
+        if (isset($result['user_id'])) {
+            $this->userId = (int) $result['user_id'];
+        } else {
+            throw OsstException::invalidUserId(0);
         }
 
-        $this->additionalInfo = $result['additional_info'];
+        if (isset($result['expiration_time'])) {
+            $this->expirationTime = (int) $result['expiration_time'];
+        } else {
+            throw OsstException::emptyExpirationTime();
+        }
+
+        $this->tokenType = isset($result['token_type']) ? (int) $result['token_type'] : null;
+
+        if (isset($result['additional_info'])) {
+            if ($additionalInfoDecryptionKey) {
+                try {
+                    $this->additionalInfo = Colloportus::decrypt($result['additional_info'], $additionalInfoDecryptionKey);
+                } catch (ColloportusException $e) {
+                    throw OsstException::additionalInfoDecryptionError($e);
+                }
+            } else {
+                $this->additionalInfo = $result['additional_info'];
+            }
+        }
 
         return $this;
     }
@@ -366,15 +403,17 @@ final class Osst
      */
     public function setAdditionalInfo(?string $additionalInfo, ?string $encryptionKey = null): self
     {
-        if (!empty($encryptionKey)) {
-            try {
-                $this->additionalInfo = Colloportus::encrypt($additionalInfo, $encryptionKey);
-            } catch (ColloportusException $e) {
-                throw OsstException::additionalInfoEncryptionError($e);
+        if ($additionalInfo) {
+            if ($encryptionKey) {
+                try {
+                    $this->additionalInfo = Colloportus::encrypt($additionalInfo, $encryptionKey);
+                } catch (ColloportusException $e) {
+                    throw OsstException::additionalInfoEncryptionError($e);
+                }
+            } else {
+                $this->additionalInfo = $additionalInfo;
             }
         }
-
-        $this->additionalInfo = $additionalInfo;
 
         return $this;
     }
@@ -403,7 +442,9 @@ final class Osst
         $statement = $this->dbConnection->prepare($sql);
 
         if (!$statement) {
-            throw TokenError::pdoStatementError($this->dbConnection->errorInfo()[2]);
+            /** @var string */
+            $errorMessage = $this->dbConnection->errorInfo()[2] ?? 'Unknown PDO error';
+            throw TokenError::pdoStatementError($errorMessage);
         }
 
         try {
@@ -426,7 +467,6 @@ final class Osst
      * Invalidate the token.
      * @param  bool          $deleteToken If true, the token will be deleted from the database. If false (default), it will be updated with the expiration time set in the past
      * @throws OsstException
-     * @return $this
      */
     public function invalidateToken(bool $deleteToken = false): void
     {
@@ -440,7 +480,9 @@ final class Osst
             $statement = $this->dbConnection->prepare(sprintf('DELETE FROM %s WHERE selector = :selector', self::TABLE_NAME));
 
             if (!$statement) {
-                throw TokenError::pdoStatementError($this->dbConnection->errorInfo()[2]);
+                /** @var string */
+                $errorMessage = $this->dbConnection->errorInfo()[2] ?? 'Unknown PDO error';
+                throw TokenError::pdoStatementError($errorMessage);
             }
 
             try {
@@ -448,15 +490,13 @@ final class Osst
             } catch (PdoException $e) {
                 throw TokenError::sqlError($e);
             }
-
-            $this->token = null;
-            $this->selector = null;
-            $this->hashedVerifier = null;
         } else {
             $statement = $this->dbConnection->prepare(sprintf('UPDATE %s SET expiration_time = :expires WHERE selector = :selector', self::TABLE_NAME));
 
             if (!$statement) {
-                throw TokenError::pdoStatementError($this->dbConnection->errorInfo()[2]);
+                /** @var string */
+                $errorMessage = $this->dbConnection->errorInfo()[2] ?? 'Unknown PDO error';
+                throw TokenError::pdoStatementError($errorMessage);
             }
 
             try {
@@ -468,6 +508,10 @@ final class Osst
                 throw TokenError::sqlError($e);
             }
         }
+
+        $this->token = null;
+        $this->selector = null;
+        $this->hashedVerifier = null;
     }
 
     /**
@@ -480,7 +524,9 @@ final class Osst
         $statement = $dbConnection->prepare(sprintf('DELETE FROM %s WHERE expiration_time <= :time', self::TABLE_NAME));
 
         if (!$statement) {
-            throw TokenError::pdoStatementError($dbConnection->errorInfo()[2]);
+            /** @var string */
+            $errorMessage = $dbConnection->errorInfo()[2] ?? 'Unknown PDO error';
+            throw TokenError::pdoStatementError($errorMessage);
         }
 
         try {
