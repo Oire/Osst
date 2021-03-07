@@ -1,5 +1,9 @@
 # Osst, Simple Yet Secure Tokens Suitable for Authentication Cookies and Password Recovery
 
+## Note! This library is not maintained anymore.
+
+Please use [Iridium security library](https://github.com/Oire/Iridium-php) instead.
+
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/Oire/Osst.svg?style=flat-square)](https://packagist.org/packages/Oire/Osst)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Oire/Osst/blob/master/LICENSE)
 
